@@ -1,0 +1,150 @@
+---
+title: "STAT 475 Sales Report"
+author: "Adam Bennett"
+date: "2023-04-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(forecast)
+library(readxl)
+setwd("C:/Users/adomr/Documents/STAT 475/Project")
+projectSeriesA <- read_excel("projectSeriesA.xlsx")
+projectSeriesC <- read_excel("projectSeriesC.xlsx")
+data.A <- ts(projectSeriesA$Adam, start = c(2003,4), frequency = 12)
+data.C <- ts(projectSeriesC$Adam, start = c(2013,4), frequency=12)
+```
+
+In this report, I will be explaining my process of forecasting The ABC Company's future sales for Product A and Product C. I will be using the given historical sales data to make an informed prediction for the next 12 months of sales. I will provide graphics and reasoning for each step of the process.
+
+# Product A
+
+Here is a view of our historical sales data of Product A.
+
+```{r, echo=FALSE}
+data.A
+ggtsdisplay(data.A)
+```
+
+First differencing of the data gives us a stationary series, facilitating accurate modelling.
+
+```{r, echo=FALSE}
+data.A.diff <- diff(data.A)
+ggtsdisplay(data.A.diff)
+```
+
+Analysis of the ACF and PACF of the differenced data lead me to three potential models for forecasting.
+
+-   ARIMA(3,1,0) with drift:
+
+```{r, echo=FALSE}
+fit1A <- Arima(data.A, order=c(3,1,0), include.drift = TRUE)
+fit2A <- Arima(data.A, order=c(1,1,3), include.drift = TRUE)
+fit3A <- Arima(data.A, order=c(2,1,3), include.drift = TRUE)
+
+print(fit1A)
+checkresiduals(fit1A)
+```
+
+-   ARIMA(1,1,3) with drift:
+
+```{r, echo=FALSE}
+print(fit2A)
+checkresiduals(fit2A)
+```
+
+-   ARIMA(2,1,3) with drift:
+
+```{r, echo=FALSE}
+print(fit3A)
+checkresiduals(fit3A)
+```
+
+All three of our models perform roughly evenly overall after considering AIC values, residual autocorrelation tests, and parameter significance. Thus, I will be forecasting using the simplest model, which is ARIMA(3,1,0) with drift.
+
+Thus, this is our prediction for the next 12 months of sales for Product A:
+
+```{r, echo=FALSE}
+pred.A <- forecast(fit1A,
+         h=12,
+         level=c(70,90)
+)
+pred.A
+autoplot(pred.A) +
+  labs(x = "Month", y = "Sales", title = "Forecast")
+```
+
+# Product C
+
+Here is a view of our historical sales data of Product C.
+
+``` {r, echo=FALSE}
+data.C
+ggtsdisplay(data.C)
+```
+
+First seasonal differencing of the data gives us a stationary series. Further differencing proved to be unnecessary.
+
+``` {r, echo=FALSE}
+data.C.sdiff <- diff(data.C, lag=12)
+ggtsdisplay(data.C.sdiff)
+```
+
+Analysis of the ACF and PACF left me with 4 potential models of the data.
+
+- ARIMA(1,0,0)(1,1,0)
+
+``` {r, echo=FALSE}
+fit1C <- Arima(data.C,
+              order=c(1,0,0),
+              seasonal=c(1,1,0))
+fit2C <- Arima(data.C,
+              order=c(2,0,0),
+              seasonal=c(1,1,0))
+fit3C <- Arima(data.C,
+              order=c(1,0,0),
+              seasonal=c(0,1,1))
+fit4C <- Arima(data.C,
+              order=c(2,0,0),
+              seasonal=c(0,1,1))
+
+fit1C
+checkresiduals(fit1C)
+```
+
+- ARIMA(2,0,0)(1,1,0)
+
+``` {r, echo=FALSE}
+fit2C
+checkresiduals(fit2C)
+```
+
+- ARIMA(1,0,0)(0,1,1)
+
+``` {r, echo=FALSE}
+fit3C
+checkresiduals(fit3C)
+```
+
+- ARIMA(2,0,0)(0,1,1)
+
+``` {r, echo=FALSE}
+fit4C
+checkresiduals(fit4C)
+```
+
+The second and fourth options are both reasonable options, providing similar results in all tests. The ARIMA(2,0,0)(0,1,1) model has slightly stronger looking Ljung-Box test results, so we will be using that to make our prediction.
+
+Thus, this is our prediction for the next 12 months of sales for Product C:
+
+``` {r, echo=FALSE}
+pred.C <- forecast(fit4C,
+                 h=12,
+                 level=c(70,90))
+
+pred.C
+autoplot(pred.C) +
+  labs(x = "Month", y = "Sales", title = "Forecast")
+```
